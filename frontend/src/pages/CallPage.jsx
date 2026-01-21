@@ -98,7 +98,7 @@ const CallPage = () => {
   };
 
   return (
-    <div className="h-screen flex flex-col bg-base-300">
+    <div className="h-screen overflow-hidden flex flex-col bg-base-300">
       {/* Header */}
       <div className="p-4 bg-base-200 border-b border-base-300">
         <div className="flex items-center gap-3">
@@ -124,15 +124,15 @@ const CallPage = () => {
       </div>
 
       {/* Video area */}
-      <div className="flex-1 p-4">
-        <div className="flex flex-col md:flex-row gap-4 h-full">
+      <div className="flex-1 overflow-hidden flex items-center justify-center p-4">
+        <div className="flex flex-col md:flex-row gap-4 md:gap-6 w-full h-full max-h-full items-center justify-center">
           {/* Local video */}
-          <div className="flex-1 h-1/2 md:h-full bg-black rounded-xl overflow-hidden">
-            <VideoPlayer stream={localStream} muted={true} label="You" />
+          <div className="w-full h-1/2 md:h-auto md:flex-1 md:max-h-full md:aspect-video lg:max-w-[780px] lg:aspect-[4/3] bg-black rounded-xl overflow-hidden">
+            <VideoPlayer stream={localStream} muted label="You" />
           </div>
 
           {/* Remote video */}
-          <div className="flex-1 h-1/2 md:h-full bg-black rounded-xl overflow-hidden">
+          <div className="w-full h-1/2 md:h-auto md:flex-1 md:max-h-full md:aspect-video lg:max-w-[780px] lg:aspect-[4/3] bg-black rounded-xl overflow-hidden">
             <VideoPlayer
               stream={remoteStream}
               label={targetUser?.fullName || "Remote"}

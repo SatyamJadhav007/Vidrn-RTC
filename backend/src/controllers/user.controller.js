@@ -1,5 +1,6 @@
 import User from "../models/User.js";
 import FriendRequest from "../models/FriendRequest.js";
+import { io, getReceiverSocketId } from "../lib/socket.js";
 
 export async function getRecommendedUsers(req, res) {
   try {
@@ -71,6 +72,12 @@ export async function sendFriendRequest(req, res) {
       sender: myId,
       recipient: recipientId,
     });
+
+    // Notify recipient in real-time if they are online
+    const recipientSocketId = getReceiverSocketId(recipientId);
+    if (recipientSocketId) {
+      io.to(recipientSocketId).emit("new-friend-request", { from: myId });
+    }
 
     res.status(201).json(friendRequest);
   } catch (error) {

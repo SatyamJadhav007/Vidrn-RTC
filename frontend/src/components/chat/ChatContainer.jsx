@@ -36,7 +36,7 @@ const ChatContainer = ({ user }) => {
   ]);
 
   return (
-    <div className="flex flex-col h-[93vh] bg-base-100">
+    <div className="flex flex-col h-full overflow-hidden bg-base-100">
       <ChatHeader user={user} isOnline={isOnline} />
 
       <div className="flex-1 overflow-hidden">
