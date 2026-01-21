@@ -115,7 +115,7 @@ const App = () => {
           path="/chat/:id"
           element={
             isAuthenticated && isOnboarded ? (
-              <Layout showSidebar={false}>
+              <Layout showSidebar={false} disableScroll={true}>
                 <ChatPage />
               </Layout>
             ) : (

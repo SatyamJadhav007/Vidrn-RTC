@@ -1,15 +1,14 @@
 import { useState } from "react";
-import { ShipWheelIcon } from "lucide-react";
-import { Link } from "react-router";
-
+import { ShipWheelIcon, Eye, EyeOff } from "lucide-react";
 import useSignUp from "../hooks/useSignUp";
-
+import { Link } from "react-router";
 const SignUpPage = () => {
   const [signupData, setSignupData] = useState({
     fullName: "",
     email: "",
     password: "",
   });
+  const [showPassword, setShowPassword] = useState(false);
   const { isPending, error, signupMutation } = useSignUp();
 
   const handleSignup = (e) => {
@@ -97,19 +96,34 @@ const SignUpPage = () => {
                         Password
                       </span>
                     </label>
-                    <input
-                      type="password"
-                      placeholder="********"
-                      className="input input-bordered w-full"
-                      value={signupData.password}
-                      onChange={(e) =>
-                        setSignupData({
-                          ...signupData,
-                          password: e.target.value,
-                        })
-                      }
-                      required
-                    />
+                    <div className="relative">
+                      <input
+                        type={showPassword ? "text" : "password"}
+                        placeholder="Enter Password"
+                        className="input input-bordered w-full pr-10"
+                        value={signupData.password}
+                        onChange={(e) =>
+                          setSignupData({
+                            ...signupData,
+                            password: e.target.value,
+                          })
+                        }
+                        required
+                      />
+
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword((prev) => !prev)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-indigo-400 hover:text-indigo-600"
+                      >
+                        {showPassword ? (
+                          <EyeOff size={18} />
+                        ) : (
+                          <Eye size={18} />
+                        )}
+                      </button>
+                    </div>
+
                     <p className="text-xs opacity-70 mt-1 text-indigo-300/70">
                       Password must be at least 6 characters long
                     </p>

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ShipWheelIcon } from "lucide-react";
+import { ShipWheelIcon, Eye, EyeOff } from "lucide-react";
 import { Link } from "react-router";
 import useLogin from "../hooks/useLogin";
 
@@ -8,7 +8,7 @@ const LoginPage = () => {
     email: "",
     password: "",
   });
-
+  const [showPassword, setShowPassword] = useState(false);
   const { isPending, error, loginMutation } = useLogin();
 
   const handleLogin = (e) => {
@@ -75,16 +75,33 @@ const LoginPage = () => {
                         Password
                       </span>
                     </label>
-                    <input
-                      type="password"
-                      placeholder="••••••••"
-                      className="input input-bordered w-full"
-                      value={loginData.password}
-                      onChange={(e) =>
-                        setLoginData({ ...loginData, password: e.target.value })
-                      }
-                      required
-                    />
+                    <div className="relative">
+                      <input
+                        type={showPassword ? "text" : "password"}
+                        placeholder="Enter Password"
+                        className="input input-bordered w-full pr-10"
+                        value={loginData.password}
+                        onChange={(e) =>
+                          setLoginData({
+                            ...loginData,
+                            password: e.target.value,
+                          })
+                        }
+                        required
+                      />
+
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword((prev) => !prev)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-indigo-400 hover:text-indigo-600"
+                      >
+                        {showPassword ? (
+                          <EyeOff size={18} />
+                        ) : (
+                          <Eye size={18} />
+                        )}
+                      </button>
+                    </div>
                   </div>
 
                   <button
