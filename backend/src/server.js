@@ -9,7 +9,18 @@ import userRoutes from "./routes/user.route.js";
 import chatRoutes from "./routes/chat.route.js";
 
 import { connectDB } from "./lib/db.js";
+import { connectRedis, disconnectRedis } from "./lib/redis.js";
 import { server, app } from "./lib/socket.js";
+
+// Graceful shutdown handler
+async function gracefulShutdown(signal) {
+  console.log(`\n${signal} received. Shutting down gracefully...`);
+  await disconnectRedis();
+  server.close(() => {
+    console.log("🛑 Server closed");
+    setTimeout(() => process.exit(0), 50); //sync exit after cleanup
+  });
+}
 
 const PORT = process.env.PORT;
 const __dirname = path.resolve();
@@ -40,9 +51,11 @@ if (process.env.NODE_ENV === "production") {
     res.sendFile(path.join(__dirname, "../frontend", "dist", "index.html"));
   });
 }
+process.on("SIGINT", () => gracefulShutdown("SIGINT"));
+process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
 
-// Use server.listen for Socket.io support
-server.listen(PORT, () => {
+server.listen(PORT, async () => {
   console.log(`Server is running on port ${PORT}`);
-  connectDB();
+  await connectDB();
+  await connectRedis();
 });
