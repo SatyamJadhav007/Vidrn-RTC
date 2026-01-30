@@ -1,6 +1,6 @@
 # Vidrn-RTC
 
-**Vidrn-RTC** is a real-time language exchange platform focused on **1‑to‑1 video calling and chat**, built to deeply understand how **WebRTC (P2P)** and **Socket.IO** work together. The project emphasizes low-latency communication, real-time notifications, and a clean, theme-rich-UI while maintaining secure, stateless authentication.
+**Vidrn-RTC** is a real-time language exchange platform focused on **1-to-1 video calling and chat**, built to deeply understand how **WebRTC (P2P)**, **Socket.IO**, and **Redis-based caching** work together in a production-style system. The project emphasizes low-latency peer-to-peer communication, real-time notifications, and efficient server-side data access through targeted caching and invalidation, while maintaining secure, stateless authentication and a clean, theme-rich UI.
 
 ---
 
@@ -21,6 +21,11 @@
   - Instant friend-request notifications between online users
   - Socket.IO integrated with **TanStack Query** for real-time emits and async state consistency
 
+- 🏪 **Redis Caching**
+  - Server-side caching for frequently requested user and social graph data
+  - Explicit cache invalidation on friend-request lifecycle events
+  - Configured with a resilient reconnection strategy to handle transient connection drops
+
 - 🧠 **State Management with Zustand**
   - WebRTC signaling state management
   - ICE candidate queue handling
@@ -30,6 +35,7 @@
 - ⚡ **Modern Tech Stack**
   - **Frontend:** React.js, TailwindCSS, TanStack-Query, Zustand, JavaScript
   - **Backend:** Express.js, MongoDB, Socket.IO, Node.js
+  - **Caching:** Upstash Redis (node-redis with TLS)
   - **Real-Time:** WebRTC (P2P), Socket.IO
 
 - 🎨 **lucide-react** for clean, consistent icons
@@ -51,7 +57,13 @@
 
 - **TanStack Query** is used for handling async server state such as authentication flows (login, signup, logout).
 
-* **Socket.IO** is integrated with TanStack Query specifically for real-time notifications (e.g., friend requests), ensuring UI state stays in sync for online users.
+- **Socket.IO** is integrated with TanStack Query specifically for real-time notifications (e.g., friend requests), ensuring UI state stays in sync for online users.
+
+- **Redis** is used as a caching layer to optimize frequently accessed, read-heavy queries:
+  - `getRecommendedUsers` (5-minute TTL)
+  - `getMyFriends` (10-minute TTL)
+  - `getFriendRequests` and `getOutgoingFriendReqs` (2-minute TTL)
+  - Targeted cache invalidation is performed on `sendFriendRequest` and `acceptFriendRequest` mutations to ensure data consistency
 
 ---
 
@@ -67,6 +79,9 @@ MONGO_URI=your_mongo_uri
 
 JWT_SECRET_KEY=your_jwt_secret
 NODE_ENV=development
+
+# Upstash Redis (get from Upstash dashboard)
+UPSTASH_REDIS_URL=rediss://default:xxx@xxx.upstash.io:6379
 ```
 
 ---
