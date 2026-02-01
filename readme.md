@@ -1,13 +1,16 @@
 # Vidrn-RTC
 
-**Vidrn-RTC** is a real-time language exchange platform focused on **1-to-1 video calling and chat**, built to deeply understand how **WebRTC (P2P)**, **Socket.IO**, and **Redis-based caching** work together in a production-style system. The project emphasizes low-latency peer-to-peer communication, real-time notifications, and efficient server-side data access through targeted caching and invalidation, while maintaining secure, stateless authentication and a clean, theme-rich UI.
+**Vidrn-RTC** is a real-time language exchange platform focused on **1-to-1 video calling and chat**, built to deeply understand how **WebRTC (P2P)**, **Socket.IO**, **Redis-based caching**, and **rate-limited REST architectures** work together in a production-style system.
+The project emphasizes **low-latency peer-to-peer communication**, **secure and validated data flow**, **backend protection via rate limiting**, and **UX-focused frontend optimizations**, while maintaining **stateless authentication** and a clean, theme-rich UI.
 
 ---
 
 ## 🚀 Highlights & Features
 
 - 🔐 **JWT Authentication (Stateless Cookies)** with protected routes and server-side auth validation.
+
 - 🌍 **Language Exchange Platform** with **32 unique UI themes** for a personalized experience.
+
 - 📹 **Real-Time 1‑to‑1 Video Calling (WebRTC)**
   - Peer-to-peer media streams for low latency
   - Signaling via Socket.IO
@@ -17,14 +20,30 @@
   - 1‑to‑1 messaging using Socket.IO events
   - Server-side socket mapping to ensure messages are delivered to the correct peer
 
-- 🔔 **Real-Time Notifications**
-  - Instant friend-request notifications between online users
-  - Socket.IO integrated with **TanStack Query** for real-time emits and async state consistency
-
 - 🏪 **Redis Caching**
   - Server-side caching for frequently requested user and social graph data
   - Explicit cache invalidation on friend-request lifecycle events
   - Configured with a resilient reconnection strategy to handle transient connection drops
+
+- 🧾 **End-to-End Data Validation (Zod)**
+  - **Frontend:** Form-level validation using **Zod + react-hook-form**
+  - **Backend:** Request payload validation using **Zod schemas**
+  - Shared validation guarantees between UI and API boundaries
+
+- 🛡️ **Redis-Based HTTP Rate Limiting**
+  - Protects critical REST endpoints from abuse
+  - Implemented using **Redis with atomic counters**
+  - Supports **IP-based** and **user-based** limits
+  - Fails open to preserve availability during Redis outages
+  - Atomic Redis operations ensure correctness under concurrency
+  - Rate limit metadata is returned via standard HTTP headers:
+    - `X-RateLimit-Limit`
+    - `X-RateLimit-Remaining`
+    - `X-RateLimit-Reset`
+
+- 🔔 **Real-Time Notifications**
+  - Instant friend-request notifications between online users
+  - Socket.IO integrated with **TanStack Query** for real-time emits and async state consistency
 
 - 🧠 **State Management with Zustand**
   - WebRTC signaling state management
@@ -32,10 +51,15 @@
   - Media stream state storage
   - Socket connection state for auth validation and event emits between two users
 
+- ⚡ **UX-Focused Onboarding Process**
+  - **Preloaded avatar images** for instant profile switching
+  - Eliminates flicker and loading delay during avatar randomization
+  - Smooth onboarding experience even on slower networks
+
 - ⚡ **Modern Tech Stack**
-  - **Frontend:** React.js, TailwindCSS, TanStack-Query, Zustand, JavaScript
-  - **Backend:** Express.js, MongoDB, Socket.IO, Node.js
-  - **Caching:** Upstash Redis (node-redis with TLS)
+  - **Frontend:** React.js, TailwindCSS, TanStack-Query, Zustand, JavaScript, react-hook-form, zod
+  - **Backend:** Express.js, MongoDB, Socket.IO, Node.js, zod
+  - **Caching and rate limiting:** Upstash Redis (node-redis with TLS)
   - **Real-Time:** WebRTC (P2P), Socket.IO
 
 - 🎨 **lucide-react** for clean, consistent icons
@@ -113,6 +137,9 @@ The primary goal of **Vidrn-RTC** is to **deeply understand and implement real-t
 - WebRTC peer-to-peer video calling
 - Socket.IO–based signaling and messaging
 - Real-time notifications and presence-aware interactions
+- Redis-backed caching and rate limiting
+- Secure, validated REST APIs
+- UX-aware frontend engineering
 
 While the platform is designed for language exchange, its core strength lies in demonstrating a **production-style real-time architecture** for video, chat, and notifications.
 

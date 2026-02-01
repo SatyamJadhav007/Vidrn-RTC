@@ -1,19 +1,29 @@
 import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { ShipWheelIcon, Eye, EyeOff } from "lucide-react";
 import { Link } from "react-router";
 import useLogin from "../hooks/useLogin";
+import { loginSchema } from "../lib/validationSchemas";
 
 const LoginPage = () => {
-  const [loginData, setLoginData] = useState({
-    email: "",
-    password: "",
-  });
   const [showPassword, setShowPassword] = useState(false);
   const { isPending, error, loginMutation } = useLogin();
 
-  const handleLogin = (e) => {
-    e.preventDefault();
-    loginMutation(loginData);
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm({
+    resolver: zodResolver(loginSchema),
+    defaultValues: {
+      email: "",
+      password: "",
+    },
+  });
+
+  const onSubmit = (data) => {
+    loginMutation(data);
   };
 
   return (
@@ -40,7 +50,7 @@ const LoginPage = () => {
           )}
 
           <div className="w-full">
-            <form onSubmit={handleLogin}>
+            <form onSubmit={handleSubmit(onSubmit)}>
               <div className="space-y-4">
                 <div>
                   <h2 className="text-xl font-semibold text-indigo-400">
@@ -60,13 +70,14 @@ const LoginPage = () => {
                     <input
                       type="email"
                       placeholder="hello@example.com"
-                      className="input input-bordered w-full"
-                      value={loginData.email}
-                      onChange={(e) =>
-                        setLoginData({ ...loginData, email: e.target.value })
-                      }
-                      required
+                      className={`input input-bordered w-full ${errors.email ? "input-error" : ""}`}
+                      {...register("email")}
                     />
+                    {errors.email && (
+                      <span className="text-error text-xs mt-1">
+                        {errors.email.message}
+                      </span>
+                    )}
                   </div>
 
                   <div className="form-control w-full space-y-2">
@@ -79,15 +90,8 @@ const LoginPage = () => {
                       <input
                         type={showPassword ? "text" : "password"}
                         placeholder="Enter Password"
-                        className="input input-bordered w-full pr-10"
-                        value={loginData.password}
-                        onChange={(e) =>
-                          setLoginData({
-                            ...loginData,
-                            password: e.target.value,
-                          })
-                        }
-                        required
+                        className={`input input-bordered w-full pr-10 ${errors.password ? "input-error" : ""}`}
+                        {...register("password")}
                       />
 
                       <button
@@ -102,6 +106,11 @@ const LoginPage = () => {
                         )}
                       </button>
                     </div>
+                    {errors.password && (
+                      <span className="text-error text-xs mt-1">
+                        {errors.password.message}
+                      </span>
+                    )}
                   </div>
 
                   <button
