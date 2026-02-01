@@ -1,32 +1,27 @@
-// import { upsertStreamUser } from "../lib/stream.js";
 import User from "../models/User.js";
 import jwt from "jsonwebtoken";
+import {
+  signupSchema,
+  loginSchema,
+  onboardSchema,
+} from "../validations/auth.validation.js";
 
 export async function signup(req, res) {
-  const { email, password, fullName } = req.body;
-
   try {
-    if (!email || !password || !fullName) {
-      return res.status(400).json({ message: "All fields are required" });
+    // Validate request body with Zod
+    const result = signupSchema.safeParse(req.body);
+    if (!result.success) {
+      const errors = result.error.errors.map((e) => e.message);
+      return res.status(400).json({ message: errors[0], errors });
     }
 
-    if (password.length < 6) {
-      return res
-        .status(400)
-        .json({ message: "Password must be at least 6 characters" });
-    }
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-    if (!emailRegex.test(email)) {
-      return res.status(400).json({ message: "Invalid email format" });
-    }
+    const { email, password, fullName } = result.data;
 
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res
         .status(400)
-        .json({ message: "Email already exists, please use a diffrent one" });
+        .json({ message: "Email already exists, please use a different one" });
     }
 
     const newUser = await User.create({
@@ -60,11 +55,14 @@ export async function signup(req, res) {
 
 export async function login(req, res) {
   try {
-    const { email, password } = req.body;
-
-    if (!email || !password) {
-      return res.status(400).json({ message: "All fields are required" });
+    // Validate request body with Zod
+    const result = loginSchema.safeParse(req.body);
+    if (!result.success) {
+      const errors = result.error.errors.map((e) => e.message);
+      return res.status(400).json({ message: errors[0], errors });
     }
+
+    const { email, password } = result.data;
 
     const user = await User.findOne({ email });
     if (!user)
@@ -101,32 +99,19 @@ export async function onboard(req, res) {
   try {
     const userId = req.user._id;
 
-    const { fullName, bio, nativeLanguage, learningLanguage, location } =
-      req.body;
-
-    if (
-      !fullName ||
-      !bio ||
-      !nativeLanguage ||
-      !learningLanguage ||
-      !location
-    ) {
-      return res.status(400).json({
-        message: "All fields are required",
-        missingFields: [
-          !fullName && "fullName",
-          !bio && "bio",
-          !nativeLanguage && "nativeLanguage",
-          !learningLanguage && "learningLanguage",
-          !location && "location",
-        ].filter(Boolean),
-      });
+    // Validate request body with Zod
+    const result = onboardSchema.safeParse(req.body);
+    if (!result.success) {
+      const errors = result.error.errors.map((e) => e.message);
+      return res.status(400).json({ message: errors[0], errors });
     }
+
+    const validatedData = result.data;
 
     const updatedUser = await User.findByIdAndUpdate(
       userId,
       {
-        ...req.body,
+        ...validatedData,
         isOnboarded: true,
       },
       { new: true },

@@ -1,18 +1,32 @@
 import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { ShipWheelIcon, Eye, EyeOff } from "lucide-react";
 import useSignUp from "../hooks/useSignUp";
 import { Link } from "react-router";
+import { signUpSchema } from "../lib/validationSchemas";
+
 const SignUpPage = () => {
-  const [signupData, setSignupData] = useState({
-    fullName: "",
-    email: "",
-    password: "",
-  });
   const [showPassword, setShowPassword] = useState(false);
   const { isPending, error, signupMutation } = useSignUp();
 
-  const handleSignup = (e) => {
-    e.preventDefault();
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm({
+    resolver: zodResolver(signUpSchema),
+    defaultValues: {
+      fullName: "",
+      email: "",
+      password: "",
+      termsAccepted: false,
+    },
+  });
+
+  const onSubmit = (data) => {
+    // Extract only the fields needed for the API (exclude termsAccepted)
+    const { termsAccepted, ...signupData } = data;
     signupMutation(signupData);
   };
 
@@ -40,7 +54,7 @@ const SignUpPage = () => {
           )}
 
           <div className="w-full">
-            <form onSubmit={handleSignup}>
+            <form onSubmit={handleSubmit(onSubmit)}>
               <div className="space-y-4">
                 <div>
                   <h2 className="text-xl font-semibold text-indigo-400">
@@ -62,16 +76,14 @@ const SignUpPage = () => {
                     <input
                       type="text"
                       placeholder="John Doe"
-                      className="input input-bordered w-full"
-                      value={signupData.fullName}
-                      onChange={(e) =>
-                        setSignupData({
-                          ...signupData,
-                          fullName: e.target.value,
-                        })
-                      }
-                      required
+                      className={`input input-bordered w-full ${errors.fullName ? "input-error" : ""}`}
+                      {...register("fullName")}
                     />
+                    {errors.fullName && (
+                      <span className="text-error text-xs mt-1">
+                        {errors.fullName.message}
+                      </span>
+                    )}
                   </div>
                   {/* EMAIL */}
                   <div className="form-control w-full">
@@ -81,13 +93,14 @@ const SignUpPage = () => {
                     <input
                       type="email"
                       placeholder="john@gmail.com"
-                      className="input input-bordered w-full"
-                      value={signupData.email}
-                      onChange={(e) =>
-                        setSignupData({ ...signupData, email: e.target.value })
-                      }
-                      required
+                      className={`input input-bordered w-full ${errors.email ? "input-error" : ""}`}
+                      {...register("email")}
                     />
+                    {errors.email && (
+                      <span className="text-error text-xs mt-1">
+                        {errors.email.message}
+                      </span>
+                    )}
                   </div>
                   {/* PASSWORD */}
                   <div className="form-control w-full">
@@ -100,15 +113,8 @@ const SignUpPage = () => {
                       <input
                         type={showPassword ? "text" : "password"}
                         placeholder="Enter Password"
-                        className="input input-bordered w-full pr-10"
-                        value={signupData.password}
-                        onChange={(e) =>
-                          setSignupData({
-                            ...signupData,
-                            password: e.target.value,
-                          })
-                        }
-                        required
+                        className={`input input-bordered w-full pr-10 ${errors.password ? "input-error" : ""}`}
+                        {...register("password")}
                       />
 
                       <button
@@ -127,14 +133,19 @@ const SignUpPage = () => {
                     <p className="text-xs opacity-70 mt-1 text-indigo-300/70">
                       Password must be at least 6 characters long
                     </p>
+                    {errors.password && (
+                      <span className="text-error text-xs mt-1">
+                        {errors.password.message}
+                      </span>
+                    )}
                   </div>
 
                   <div className="form-control">
                     <label className="label cursor-pointer justify-start gap-2">
                       <input
                         type="checkbox"
-                        className="checkbox checkbox-sm"
-                        required
+                        className={`checkbox checkbox-sm ${errors.termsAccepted ? "checkbox-error" : ""}`}
+                        {...register("termsAccepted")}
                       />
                       <span className="text-xs leading-tight text-base-content/80">
                         I agree to the{" "}
@@ -147,6 +158,11 @@ const SignUpPage = () => {
                         </span>
                       </span>
                     </label>
+                    {errors.termsAccepted && (
+                      <span className="text-error text-xs mt-1">
+                        {errors.termsAccepted.message}
+                      </span>
+                    )}
                   </div>
                 </div>
 

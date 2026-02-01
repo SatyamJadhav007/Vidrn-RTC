@@ -1,4 +1,6 @@
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import useAuthUser from "../hooks/useAuthUser";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
@@ -6,24 +8,38 @@ import { completeOnboarding } from "../lib/api";
 import { getProfilePicUrl } from "../lib/profilePic";
 import { LoaderIcon, MapPinIcon, ShipWheelIcon, ShuffleIcon } from "lucide-react";
 import { LANGUAGES } from "../constants";
+import { onboardingSchema } from "../lib/validationSchemas";
 
 const OnboardingPage = () => {
   const { authUser } = useAuthUser();
   const queryClient = useQueryClient();
 
-  const [formState, setFormState] = useState({
-    fullName: "",
-    bio: "",
-    nativeLanguage: "",
-    learningLanguage: "",
-    location: "",
-    profilePic: 1,
+  const {
+    register,
+    handleSubmit,
+    watch,
+    setValue,
+    reset,
+    formState: { errors },
+  } = useForm({
+    resolver: zodResolver(onboardingSchema),
+    defaultValues: {
+      fullName: "",
+      bio: "",
+      nativeLanguage: "",
+      learningLanguage: "",
+      location: "",
+      profilePic: 1,
+    },
   });
+
+  // Watch profilePic for avatar preview
+  const profilePic = watch("profilePic");
 
   // Sync formState when authUser data arrives (fixes timing issue on first navigation)
   useEffect(() => {
     if (authUser) {
-      setFormState({
+      reset({
         fullName: authUser.fullName || "",
         bio: authUser.bio || "",
         nativeLanguage: authUser.nativeLanguage || "",
@@ -32,7 +48,19 @@ const OnboardingPage = () => {
         profilePic: authUser.profilePic || 1,
       });
     }
-  }, [authUser]);
+  }, [authUser, reset]);
+
+  // Preload all 8 profile images on component mount for instant avatar switching
+  useEffect(() => {
+    const preloadImages = () => {
+      for (let i = 1; i <= 8; i++) {
+        const img = new Image();
+        img.loading="eager";
+        img.src = getProfilePicUrl(i);
+      }
+    };
+    preloadImages();
+  }, []);
 
   const { mutate: onboardingMutation, isPending } = useMutation({
     mutationFn: completeOnboarding,
@@ -46,15 +74,13 @@ const OnboardingPage = () => {
     },
   });
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-
-    onboardingMutation(formState);
+  const onSubmit = (data) => {
+    onboardingMutation(data);
   };
 
   const handleRandomAvatar = () => {
     const randomNum = Math.floor(Math.random() * 8) + 1; // 1-8 included
-    setFormState({ ...formState, profilePic: randomNum });
+    setValue("profilePic", randomNum);
     toast.success("Random profile picture selected!");
   };
 
@@ -64,13 +90,13 @@ const OnboardingPage = () => {
         <div className="card-body p-6 sm:p-8">
           <h1 className="text-2xl sm:text-3xl font-bold text-center mb-6">Complete Your Profile</h1>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             {/* PROFILE PIC CONTAINER */}
             <div className="flex flex-col items-center justify-center space-y-4">
               {/* IMAGE PREVIEW */}
               <div className="size-32 rounded-full bg-base-300 overflow-hidden">
                 <img
-                  src={getProfilePicUrl(formState.profilePic)}
+                  src={getProfilePicUrl(profilePic)}
                   alt="Profile Preview"
                   className="w-full h-full object-cover"
                 />
@@ -92,12 +118,13 @@ const OnboardingPage = () => {
               </label>
               <input
                 type="text"
-                name="fullName"
-                value={formState.fullName}
-                onChange={(e) => setFormState({ ...formState, fullName: e.target.value })}
-                className="input input-bordered w-full"
+                className={`input input-bordered w-full ${errors.fullName ? "input-error" : ""}`}
                 placeholder="Your full name"
+                {...register("fullName")}
               />
+              {errors.fullName && (
+                <span className="text-error text-xs mt-1">{errors.fullName.message}</span>
+              )}
             </div>
 
             {/* BIO */}
@@ -106,12 +133,13 @@ const OnboardingPage = () => {
                 <span className="label-text">Bio</span>
               </label>
               <textarea
-                name="bio"
-                value={formState.bio}
-                onChange={(e) => setFormState({ ...formState, bio: e.target.value })}
-                className="textarea textarea-bordered h-24"
+                className={`textarea textarea-bordered h-24 ${errors.bio ? "textarea-error" : ""}`}
                 placeholder="Tell others about yourself and your language learning goals"
+                {...register("bio")}
               />
+              {errors.bio && (
+                <span className="text-error text-xs mt-1">{errors.bio.message}</span>
+              )}
             </div>
 
             {/* LANGUAGES */}
@@ -122,10 +150,8 @@ const OnboardingPage = () => {
                   <span className="label-text">Native Language</span>
                 </label>
                 <select
-                  name="nativeLanguage"
-                  value={formState.nativeLanguage}
-                  onChange={(e) => setFormState({ ...formState, nativeLanguage: e.target.value })}
-                  className="select select-bordered w-full"
+                  className={`select select-bordered w-full ${errors.nativeLanguage ? "select-error" : ""}`}
+                  {...register("nativeLanguage")}
                 >
                   <option value="">Select your native language</option>
                   {LANGUAGES.map((lang) => (
@@ -134,6 +160,9 @@ const OnboardingPage = () => {
                     </option>
                   ))}
                 </select>
+                {errors.nativeLanguage && (
+                  <span className="text-error text-xs mt-1">{errors.nativeLanguage.message}</span>
+                )}
               </div>
 
               {/* LEARNING LANGUAGE */}
@@ -142,10 +171,8 @@ const OnboardingPage = () => {
                   <span className="label-text">Learning Language</span>
                 </label>
                 <select
-                  name="learningLanguage"
-                  value={formState.learningLanguage}
-                  onChange={(e) => setFormState({ ...formState, learningLanguage: e.target.value })}
-                  className="select select-bordered w-full"
+                  className={`select select-bordered w-full ${errors.learningLanguage ? "select-error" : ""}`}
+                  {...register("learningLanguage")}
                 >
                   <option value="">Select language you're learning</option>
                   {LANGUAGES.map((lang) => (
@@ -154,6 +181,9 @@ const OnboardingPage = () => {
                     </option>
                   ))}
                 </select>
+                {errors.learningLanguage && (
+                  <span className="text-error text-xs mt-1">{errors.learningLanguage.message}</span>
+                )}
               </div>
             </div>
 
@@ -166,13 +196,14 @@ const OnboardingPage = () => {
                 <MapPinIcon className="absolute top-1/2 transform -translate-y-1/2 left-3 size-5 text-base-content opacity-70" />
                 <input
                   type="text"
-                  name="location"
-                  value={formState.location}
-                  onChange={(e) => setFormState({ ...formState, location: e.target.value })}
-                  className="input input-bordered w-full pl-10"
+                  className={`input input-bordered w-full pl-10 ${errors.location ? "input-error" : ""}`}
                   placeholder="City, Country"
+                  {...register("location")}
                 />
               </div>
+              {errors.location && (
+                <span className="text-error text-xs mt-1">{errors.location.message}</span>
+              )}
             </div>
 
             {/* SUBMIT BUTTON */}
