@@ -1,8 +1,10 @@
 import { createClient } from "redis";
 
+const redisUrl = process.env.REDIS_URL || process.env.UPSTASH_REDIS_URL;
+
 // Create Redis client (rediss:// handles TLS automatically)
 const redis = createClient({
-  url: process.env.UPSTASH_REDIS_URL,
+  url: redisUrl,
   socket: {
     reconnectStrategy: (retries) => {
       if (retries > 10) {

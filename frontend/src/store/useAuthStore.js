@@ -1,8 +1,9 @@
 import { create } from "zustand";
 import { io } from "socket.io-client";
 
-const BASE_URL =
-  import.meta.env.MODE === "development" ? "http://localhost:5001" : "/";
+const SOCKET_URL =
+  import.meta.env.VITE_SOCKET_URL ??
+  (import.meta.env.MODE === "development" ? "http://localhost:5001" : "/");
 
 export const useAuthStore = create((set, get) => ({
   socket: null,
@@ -15,7 +16,7 @@ export const useAuthStore = create((set, get) => ({
     // Don't create new connection if already connected
     if (socket?.connected) return;
 
-    const newSocket = io(BASE_URL, {
+    const newSocket = io(SOCKET_URL, {
       query: { userId },
       withCredentials: true,
     });

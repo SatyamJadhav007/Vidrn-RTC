@@ -10,6 +10,7 @@ import chatRoutes from "./routes/chat.route.js";
 
 import { connectDB } from "./lib/db.js";
 import { connectRedis, disconnectRedis } from "./lib/redis.js";
+import { getCorsOrigins } from "./lib/corsOrigins.js";
 import { server, app } from "./lib/socket.js";
 
 // Graceful shutdown handler
@@ -25,12 +26,11 @@ async function gracefulShutdown(signal) {
 const PORT = process.env.PORT;
 const __dirname = path.resolve();
 
+app.set("trust proxy", 1);
+
 app.use(
   cors({
-    origin:
-      process.env.NODE_ENV === "production"
-        ? "https://vidrn-rtc.onrender.com"
-        : "http://localhost:5173",
+    origin: getCorsOrigins(),
     credentials: true, // allow frontend to send cookies
     allowedHeaders: ["Content-Type", "Authorization"],
     methods: ["GET", "POST", "PUT", "DELETE"],
@@ -44,7 +44,10 @@ app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/chat", chatRoutes);
 
-if (process.env.NODE_ENV === "production") {
+if (
+  process.env.NODE_ENV === "production" &&
+  process.env.SERVE_FRONTEND !== "false"
+) {
   app.use(express.static(path.join(__dirname, "../frontend/dist")));
 
   app.get("*", (_, res) => {
