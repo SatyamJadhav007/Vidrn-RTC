@@ -1,6 +1,6 @@
 import User from "../models/User.js";
 import FriendRequest from "../models/FriendRequest.js";
-import { io, getReceiverSocketId } from "../lib/socket.js";
+import { emitToUser } from "../lib/socket.js";
 import { getFromCache, setInCache, invalidateCache } from "../lib/redis.js";
 
 // Cache TTLs (in seconds)
@@ -120,11 +120,7 @@ export async function sendFriendRequest(req, res) {
       `friend-reqs:${recipientId}`,
     );
 
-    // Notify recipient in real-time if they are online
-    const recipientSocketId = getReceiverSocketId(recipientId);
-    if (recipientSocketId) {
-      io.to(recipientSocketId).emit("new-friend-request", { from: myId });
-    }
+    emitToUser(recipientId, "new-friend-request", { from: myId });
 
     res.status(201).json(friendRequest);
   } catch (error) {

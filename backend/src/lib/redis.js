@@ -2,19 +2,21 @@ import { createClient } from "redis";
 
 const redisUrl = process.env.REDIS_URL || process.env.UPSTASH_REDIS_URL;
 
+const reconnectStrategy = (retries) => {
+  if (retries > 10) {
+    console.error("❌ Redis max reconnection attempts reached");
+    return new Error("Max reconnection attempts reached");
+  }
+  const delay = Math.min(retries * 100, 3000);
+  console.log(`🔄 Redis reconnecting in ${delay}ms (attempt ${retries})`);
+  return delay;
+};
+
 // Create Redis client (rediss:// handles TLS automatically)
 const redis = createClient({
   url: redisUrl,
   socket: {
-    reconnectStrategy: (retries) => {
-      if (retries > 10) {
-        console.error("❌ Redis max reconnection attempts reached");
-        return new Error("Max reconnection attempts reached");
-      }
-      const delay = Math.min(retries * 100, 3000); // Exponential backoff, max 3s
-      console.log(`🔄 Redis reconnecting in ${delay}ms (attempt ${retries})`);
-      return delay;
-    },
+    reconnectStrategy,
   },
 });
 
@@ -29,6 +31,19 @@ export async function connectRedis() {
   if (!redis.isOpen) {
     await redis.connect();
   }
+}
+
+/**
+ * Create an additional Redis client (for Socket.IO pub/sub adapter).
+ * Each client needs its own connection — do not reuse the main cache client.
+ */
+export function createRedisDuplicateClient() {
+  return createClient({
+    url: redisUrl,
+    socket: {
+      reconnectStrategy,
+    },
+  });
 }
 
 /**

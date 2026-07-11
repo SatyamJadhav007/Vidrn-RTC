@@ -1,16 +1,12 @@
 import { create } from "zustand";
 import { useAuthStore } from "./useAuthStore";
 import toast from "react-hot-toast";
-// STUN servers for NAT traversal(ICE candidates)
-const iceServers = {
-  iceServers: [
-    { urls: "stun:stun.l.google.com:19302" },
-    { urls: "stun:stun1.l.google.com:19302" },
-    { urls: "stun:stun2.l.google.com:19302" },
-    { urls: "stun:stun3.l.google.com:19302" },
-    { urls: "stun:stun4.l.google.com:19302" },
-  ],
-};
+import { getTurnCredentials } from "../lib/api";
+
+// NOTE: iceServers is now fetched dynamically per-call via getTurnCredentials().
+// This ensures HMAC time-limited credentials are fresh when each RTCPeerConnection
+// is created, and adds coturn TURN relay fallback on top of Google STUN.
+// On Render / local dev (no TURN_SECRET set), the helper falls back to STUN-only.
 
 export const useVideoStore = create((set, get) => ({
   localStream: null, // My own video/audio streams
@@ -49,7 +45,12 @@ export const useVideoStore = create((set, get) => ({
       // Then set up the peer connection and signaling
       const socket = useAuthStore.getState().socket;
 
-      const peer = new RTCPeerConnection(iceServers); // current user's peer connection
+      // Fetch fresh time-limited TURN credentials before creating the peer connection.
+      // Falls back to STUN-only if the endpoint is unreachable (Render, local dev).
+      const iceServers = await getTurnCredentials();
+      console.log("🌐 ICE servers loaded:", iceServers.map((s) => s.urls));
+
+      const peer = new RTCPeerConnection({ iceServers }); // current user's peer connection
       const remoteStream = new MediaStream();
       set({ remoteStream, peer });
 
@@ -143,7 +144,12 @@ export const useVideoStore = create((set, get) => ({
     try {
       // Initialize media first->Create peer connection instance and set the remote description(offer) and the peer object.
       const localStream = await get().initializeMedia();
-      const peer = new RTCPeerConnection(iceServers);
+
+      // Fetch fresh TURN credentials for the callee side too.
+      const iceServers = await getTurnCredentials();
+      console.log("🌐 ICE servers loaded (callee):", iceServers.map((s) => s.urls));
+
+      const peer = new RTCPeerConnection({ iceServers });
       const remoteStream = new MediaStream();
       set({ remoteStream, peer });
 

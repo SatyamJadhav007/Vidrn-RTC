@@ -5,6 +5,13 @@ const SOCKET_URL =
   import.meta.env.VITE_SOCKET_URL ??
   (import.meta.env.MODE === "development" ? "http://localhost:5001" : "/");
 
+// Polling breaks behind a load balancer without sticky sessions (initial GET/POST
+// can land on different backends). WebSocket-only is safe with the Redis adapter.
+const SOCKET_TRANSPORTS =
+  import.meta.env.MODE === "development"
+    ? ["polling", "websocket"]
+    : ["websocket"];
+
 export const useAuthStore = create((set, get) => ({
   socket: null,
   onlineUsers: [],
@@ -13,12 +20,21 @@ export const useAuthStore = create((set, get) => ({
   connectSocket: (userId) => {
     const { socket } = get();
 
-    // Don't create new connection if already connected
     if (socket?.connected) return;
+
+    // Drop a stale socket so reconnects after proxy/adapter errors get a clean client
+    if (socket) {
+      socket.removeAllListeners();
+      socket.disconnect();
+    }
 
     const newSocket = io(SOCKET_URL, {
       query: { userId },
       withCredentials: true,
+      path: "/socket.io",
+      transports: SOCKET_TRANSPORTS,
+      reconnection: true,
+      reconnectionAttempts: 10,
     });
 
     newSocket.on("connect", () => {
