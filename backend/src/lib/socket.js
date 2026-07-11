@@ -1,7 +1,9 @@
 import { Server } from "socket.io";
+import { createAdapter } from "@socket.io/redis-adapter";
 import http from "http";
 import express from "express";
 import { getCorsOrigins } from "./corsOrigins.js";
+import { createRedisDuplicateClient, redis } from "./redis.js";
 
 const app = express();
 const server = http.createServer(app);
@@ -13,30 +15,65 @@ const io = new Server(server, {
   },
 });
 
-// Store online users: { userId: socketId }
-const userSocketMap = {};
+const ONLINE_USERS_KEY = "online_users";
 
-export function getReceiverSocketId(userId) {
-  return userSocketMap[userId] || null;
+let pubClient = null;
+let subClient = null;
+
+function userRoom(userId) {
+  return `user:${userId}`;
 }
 
-io.on("connection", (socket) => {
+export async function initSocketAdapter() {
+  pubClient = createRedisDuplicateClient();
+  subClient = pubClient.duplicate();
+
+  pubClient.on("error", (err) =>
+    console.error("❌ Socket.IO Redis pub error:", err.message),
+  );
+  subClient.on("error", (err) =>
+    console.error("❌ Socket.IO Redis sub error:", err.message),
+  );
+
+  await Promise.all([pubClient.connect(), subClient.connect()]);
+  io.adapter(createAdapter(pubClient, subClient));
+  console.log("✅ Socket.IO Redis adapter connected");
+}
+
+export async function disconnectSocketAdapter() {
+  if (subClient?.isOpen) {
+    await subClient.quit();
+  }
+  if (pubClient?.isOpen) {
+    await pubClient.quit();
+  }
+}
+
+export function emitToUser(userId, event, payload) {
+  io.to(userRoom(userId)).emit(event, payload);
+}
+
+async function isUserOnline(userId) {
+  const sockets = await io.in(userRoom(userId)).fetchSockets();
+  return sockets.length > 0;
+}
+
+async function broadcastOnlineUsers() {
+  try {
+    const users = await redis.sMembers(ONLINE_USERS_KEY);
+    io.emit("getOnlineUsers", users);
+  } catch (error) {
+    console.error("❌ Failed to broadcast online users:", error.message);
+  }
+}
+
+io.on("connection", async (socket) => {
   const userId = socket.handshake.query.userId;
 
-  if (userId) {
-    userSocketMap[userId] = socket.id;
-    console.log(`✅ User connected: ${userId} -> Socket ID: ${socket.id}`);
-  }
-
-  // Emit updated list of online users to all clients
-  io.emit("getOnlineUsers", Object.keys(userSocketMap));
-
-  // Video call signaling events
-  socket.on("call-user", ({ to, from, signal }) => {
-    const receiverSocketId = getReceiverSocketId(to);
-    if (receiverSocketId) {
+  socket.on("call-user", async ({ to, from, signal }) => {
+    if (await isUserOnline(to)) {
       console.log(`📞 Calling user ${to} from ${from}`);
-      io.to(receiverSocketId).emit("incoming-call", { from, signal });
+      emitToUser(to, "incoming-call", { from, signal });
     } else {
       console.warn(`⚠️ User ${to} is offline or not found.`);
       socket.emit("call-error", { message: "User is offline" });
@@ -44,49 +81,50 @@ io.on("connection", (socket) => {
   });
 
   socket.on("answer-call", ({ to, signal }) => {
-    const callerSocketId = getReceiverSocketId(to);
-    if (callerSocketId) {
-      console.log(`✅ Call answered by ${userId} for ${to}`);
-      io.to(callerSocketId).emit("call-answered", { signal });
-    } else {
-      console.warn(`⚠️ Caller ${to} not found.`);
-    }
+    console.log(`✅ Call answered by ${userId} for ${to}`);
+    emitToUser(to, "call-answered", { signal });
   });
 
   socket.on("ice-candidate", ({ candidate, to }) => {
-    const receiverSocketId = getReceiverSocketId(to);
-    if (receiverSocketId) {
-      console.log(`❄️ Sending ICE candidate from ${userId} to ${to}`);
-      io.to(receiverSocketId).emit("ice-candidate", {
-        candidate,
-        from: userId,
-      });
-    } else {
-      console.warn(`⚠️ ICE candidate receiver ${to} not found.`);
-    }
+    console.log(`❄️ Sending ICE candidate from ${userId} to ${to}`);
+    emitToUser(to, "ice-candidate", { candidate, from: userId });
   });
 
   socket.on("end-call", ({ to }) => {
-    const receiverSocketId = getReceiverSocketId(to);
-    if (receiverSocketId) {
-      console.log(`🚫 Call ended by ${userId} for ${to}`);
-      io.to(receiverSocketId).emit("call-ended");
-    } else {
-      console.warn(`⚠️ Cannot end call, user ${to} not found.`);
-    }
+    console.log(`🚫 Call ended by ${userId} for ${to}`);
+    emitToUser(to, "call-ended");
   });
 
-  socket.on("disconnect", () => {
-    if (userId) {
-      delete userSocketMap[userId];
-      console.log(`❌ User disconnected: ${userId}`);
-      io.emit("getOnlineUsers", Object.keys(userSocketMap));
+  socket.on("disconnect", async () => {
+    if (!userId) return;
+
+    console.log(`❌ User disconnected: ${userId}`);
+
+    const remaining = await io.in(userRoom(userId)).fetchSockets();
+    if (remaining.length === 0) {
+      try {
+        await redis.sRem(ONLINE_USERS_KEY, userId);
+      } catch (error) {
+        console.error(
+          "❌ Failed to update online users on disconnect:",
+          error.message,
+        );
+      }
     }
+
+    await broadcastOnlineUsers();
   });
+
+  if (!userId) return;
+
+  try {
+    await socket.join(userRoom(userId));
+    await redis.sAdd(ONLINE_USERS_KEY, userId);
+    console.log(`✅ User connected: ${userId} -> Socket ID: ${socket.id}`);
+    await broadcastOnlineUsers();
+  } catch (error) {
+    console.error("❌ Failed to register online user:", error.message);
+  }
 });
-
-export function getOnlineUsers() {
-  return Object.keys(userSocketMap);
-}
 
 export { io, app, server };

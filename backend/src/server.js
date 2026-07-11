@@ -7,15 +7,22 @@ import path from "path";
 import authRoutes from "./routes/auth.route.js";
 import userRoutes from "./routes/user.route.js";
 import chatRoutes from "./routes/chat.route.js";
+import turnRoutes from "./routes/turn.route.js";
 
 import { connectDB } from "./lib/db.js";
 import { connectRedis, disconnectRedis } from "./lib/redis.js";
 import { getCorsOrigins } from "./lib/corsOrigins.js";
-import { server, app } from "./lib/socket.js";
+import {
+  server,
+  app,
+  initSocketAdapter,
+  disconnectSocketAdapter,
+} from "./lib/socket.js";
 
 // Graceful shutdown handler
 async function gracefulShutdown(signal) {
   console.log(`\n${signal} received. Shutting down gracefully...`);
+  await disconnectSocketAdapter();
   await disconnectRedis();
   server.close(() => {
     console.log("🛑 Server closed");
@@ -43,6 +50,10 @@ app.use(cookieParser());
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/chat", chatRoutes);
+app.use("/api/turn", turnRoutes);
+
+// Health check for ALB / ECS
+app.get("/health", (_, res) => res.status(200).json({ status: "ok" }));
 
 if (
   process.env.NODE_ENV === "production" &&
@@ -57,8 +68,17 @@ if (
 process.on("SIGINT", () => gracefulShutdown("SIGINT"));
 process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
 
-server.listen(PORT, async () => {
-  console.log(`Server is running on port ${PORT}`);
+async function startServer() {
   await connectDB();
   await connectRedis();
+  await initSocketAdapter();
+
+  server.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
+  });
+}
+
+startServer().catch((error) => {
+  console.error("❌ Failed to start server:", error);
+  process.exit(1);
 });

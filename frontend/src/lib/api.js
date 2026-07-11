@@ -59,3 +59,25 @@ export async function acceptFriendRequest(requestId) {
   );
   return response.data;
 }
+
+/**
+ * Fetch short-lived TURN credentials from the backend.
+ * Returns an array ready to be passed as RTCPeerConnection iceServers.
+ *
+ * Falls back to Google STUN servers if the request fails — this keeps
+ * Render (no TURN configured) and local dev working without changes.
+ */
+export async function getTurnCredentials() {
+  try {
+    const res = await axiosInstance.get("/turn/credentials");
+    return res.data.iceServers;
+  } catch (error) {
+    console.warn("⚠️ Could not fetch TURN credentials — falling back to Google STUN:", error.message);
+    // Fallback: Google public STUN only (works for most networks)
+    return [
+      { urls: "stun:stun.l.google.com:19302" },
+      { urls: "stun:stun1.l.google.com:19302" },
+    ];
+  }
+}
+

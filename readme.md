@@ -1,7 +1,7 @@
 # Vidrn-RTC
 
 **Vidrn-RTC** is a real-time language exchange platform focused on **1-to-1 video calling and chat**, built to deeply understand how **WebRTC (P2P)**, **Socket.IO**, **Redis-based caching**, and **rate-limited REST architectures** work together in a production-style system.
-The project emphasizes **low-latency peer-to-peer communication**, **secure and validated data flow**, **backend protection via rate limiting**, and **UX-focused frontend optimizations**, while maintaining **stateless authentication** and a clean, theme-rich UI.
+The project emphasizes **low-latency peer-to-peer communication**, **secure and validated data flow**, **backend protection via rate limiting**, and **UX-focused frontend optimizations**, while maintaining **stateless authentication** and a clean, theme-rich UI. Beyond the application layer, Vidrn-RTC is fully containerized with **Docker Compose** for reproducible local development, and deployable to **AWS** via **Terraform-managed Infrastructure as Code**, provisioning **ECS Fargate**, an **Application Load Balancer**, **ElastiCache**, and a custom **coturn** TURN relay. **Socket.IO horizontally scales** across container instances using the **Redis Pub/Sub adapter**, enabling stateless, sticky-session-free WebSocket delivery in a multi-instance production environment.
 
 ---
 
@@ -62,6 +62,23 @@ The project emphasizes **low-latency peer-to-peer communication**, **secure and 
   - **Caching and rate limiting:** Upstash Redis (node-redis with TLS)
   - **Real-Time:** WebRTC (P2P), Socket.IO
 
+- 🐳 **Docker & Containerization**
+  - Full-stack containerization using multi-stage Docker builds
+  - Reproducible local environments using `docker-compose`
+
+- ⚖️ **Horizontal Scaling & Load Balancing**
+  - Socket.IO scaling across multiple node instances via `@socket.io/redis-adapter`
+  - Stateless WebSockets utilizing user-specific rooms (no sticky sessions required)
+  - Traffic routed via AWS Application Load Balancer (ALB)
+
+- 🌐 **Production WebRTC Infrastructure**
+  - Dynamic HMAC-SHA1 credential generation for TURN servers
+  - Custom EC2 `coturn` relay server for reliable connections across restrictive NATs/Firewalls
+
+- ☁️ **Infrastructure as Code (Terraform)**
+  - Fully automated, reproducible AWS environments
+  - Automated provisioning of VPC, ECS Fargate, ALB, ElastiCache, and EC2 resources
+
 - 🎨 **lucide-react** for clean, consistent icons
 
 ---
@@ -88,44 +105,65 @@ The project emphasizes **low-latency peer-to-peer communication**, **secure and 
   - `getMyFriends` (10-minute TTL)
   - `getFriendRequests` and `getOutgoingFriendReqs` (2-minute TTL)
   - Targeted cache invalidation is performed on `sendFriendRequest` and `acceptFriendRequest` mutations to ensure data consistency
+- **Redis Pub/Sub Adapter** broadcasts Socket.IO events across all container instances, enabling seamless horizontal scaling without message loss or sticky sessions.
+
+- **coturn (TURN/STUN)** handles symmetric NAT traversal for restrictive networks where direct P2P connections fail.
+
+- **AWS Infrastructure (Terraform)** utilizes ECS Fargate for self-healing container orchestration and Application Load Balancer for intelligent path-based request routing.
 
 ---
 
-## 🧪 Environment Setup
+## 🧪 Environment Setup & Running the Application
 
-### Backend (`/backend`)
+There are two primary ways to configure and run Vidrn-RTC: locally via Docker Compose, or deploying to AWS using Terraform.
 
-Create a `.env` file:
+### 1. Local Development (Docker Compose)
+
+The easiest way to run the full stack (Frontend, Nginx, Backend, Redis) locally.
+
+1. Clone the repository and create a `.env` file at the root (refer to `.env.example`).
 
 ```env
 PORT=5001
 MONGO_URI=your_mongo_uri
-
 JWT_SECRET_KEY=your_jwt_secret
 NODE_ENV=development
-
-# Upstash Redis (get from Upstash dashboard)
-UPSTASH_REDIS_URL=rediss://default:xxx@xxx.upstash.io:6379
+# Redis runs automatically in Docker
 ```
 
----
-
-## 🔧 Run the Backend (Locally)
+2. Run the Docker containers:
 
 ```bash
-cd backend
-npm install
-npm run dev
+docker-compose up --build
 ```
 
----
+3. The app will be available at `http://localhost:8080`.
 
-## 💻 Run the Frontend (Locally)
+_(Alternatively, you can run the backend and frontend separately using `npm install` and `npm run dev` in their respective folders)._
+
+### 2. AWS Ephemeral Deployment (Terraform)
+
+For a production-style, horizontally scalable deployment on AWS ECS Fargate.
+
+1. Navigate to the `terraform/` directory.
+2. Copy the variables template and fill in your AWS Account ID, Mongo URI, and secrets:
 
 ```bash
-cd frontend
-npm install
-npm run dev
+cp terraform.tfvars.example terraform.tfvars
+```
+
+3. Provision the infrastructure:
+
+```bash
+terraform init
+terraform apply -var-file="terraform.tfvars"
+```
+
+4. Terraform will output your new Application Load Balancer URL.
+5. When finished testing, tear down the infrastructure to stop billing:
+
+```bash
+terraform destroy -var-file="terraform.tfvars"
 ```
 
 ---
@@ -149,7 +187,7 @@ While the platform is designed for language exchange, its core strength lies in 
 
 ✅ **Completed / Developed** — The core platform is fully implemented and functional.
 
-The project remains **open for future improvements**, with known scope for architectural enhancements, particularly around **Socket.IO handling and scalability** (e.g., socket lifecycle management,Handling group chats and calls, horizontal scaling, and event orchestration).
+The project remains **open for future improvements**, particularly around **Observability** (Prometheus metrics/Grafana dashboards), **CI/CD pipelines** (GitHub Actions), and extending WebRTC capabilities to support group chats and multi-peer calls.
 
 ---
 

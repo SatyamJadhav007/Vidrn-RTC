@@ -1,5 +1,5 @@
 import { Message } from "../models/message.js";
-import { io, getReceiverSocketId } from "../lib/socket.js";
+import { emitToUser } from "../lib/socket.js";
 
 // Send a message to another user
 export async function sendMessage(req, res) {
@@ -18,11 +18,7 @@ export async function sendMessage(req, res) {
       text: text.trim(),
     });
 
-    // Emit to receiver if online
-    const receiverSocketId = getReceiverSocketId(receiverId);
-    if (receiverSocketId) {
-      io.to(receiverSocketId).emit("newMessage", newMessage);
-    }
+    emitToUser(receiverId, "newMessage", newMessage);
 
     res.status(201).json(newMessage);
   } catch (error) {
@@ -70,12 +66,8 @@ export async function deleteMessage(req, res) {
 
     await Message.findByIdAndDelete(messageId);
 
-    // Notify the other user about the deleted message
     const receiverId = message.to.toString();
-    const receiverSocketId = getReceiverSocketId(receiverId);
-    if (receiverSocketId) {
-      io.to(receiverSocketId).emit("messageDeleted", { messageId });
-    }
+    emitToUser(receiverId, "messageDeleted", { messageId });
 
     res.status(200).json({ message: "Message deleted successfully" });
   } catch (error) {

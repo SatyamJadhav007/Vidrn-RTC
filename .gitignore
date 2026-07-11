@@ -25,4 +25,34 @@ dist-ssr
 
 .env
 
+# Terraform provider plugins & working directory
+.terraform.lock.hcl
+.terraform
+# State files (stored in S3, never local)
+*.tfstate
+*.tfstate.*
+
+# Crash logs
+crash.log
+crash.*.log
+
+# Secret-containing variable files
+*.tfvars
+!*.tfvars.example
+
+# Override files
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# CLI config
+.terraformrc
+terraform.rc
+
+
+# SSH keys
+*.pem
+
 D*.md
+c*.md
