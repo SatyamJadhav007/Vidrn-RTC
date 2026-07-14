@@ -1,0 +1,22 @@
+name: Enforce Gatekeeper Policies
+
+on:
+  pull_request:
+    paths:
+      - "**.tf"
+
+jobs:
+  call-gatekeeper:
+    name: Run Central Gatekeeper
+    # This points to the reusable workflow we just created in your central repo
+    uses: SatyamJadhav007/PaC-Gatekeeper-Terraform/.github/workflows/reusable-policy-gatekeeper.yml@main
+    with:
+      # If your Terraform files in Vidrn are in a specific folder, change this (e.g. 'terraform' or 'infra')
+      # If they are in the root directory, leave it as '.'
+      tf_working_dir: "./terraform"
+      aws_region: "ap-south-1"
+    secrets:
+      # Pass the required secrets from the Vidrn repo to the central workflow
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      INFRACOST_API_KEY: ${{ secrets.INFRACOST_API_KEY }}
