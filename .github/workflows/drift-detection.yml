@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   detect-drift:
-    uses: SatyamJadhav007/PaC-Gatekeeper-Terraform/.github/workflows/reusable-drift-detection.yml@main
+    uses: SatyamJadhav007/PaC-Gatekeeper-Terraform/.github/workflows/reusable-drift-detection.yml@v1
     with:
       tf_working_dir: "terraform"
       aws_region: "ap-south-1"
